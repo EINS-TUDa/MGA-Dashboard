@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -36,43 +37,28 @@ class Plot(BaseModel):
         return self
 
 
+class Manifest(BaseModel):
+    obj_label: str
+    dimension_info: dict[str, str] = {}
+    dimension_unit: dict[str, str] = {}
+    output_datasets: dict[str, OutputDataset] = {}
+    plots: dict[str, Plot] = {}
+
+
+def load_manifest(path: Path) -> Manifest:
+    return Manifest.model_validate(json.loads(path.read_text(encoding="utf-8")))
+
+
 class Settings(BaseSettings):
     app_name: str = "MGA Server"
     debug: bool = False
-    obj_label: str = "TOTEX"
     data_path: Path = Path("data/points.pkl")
     duals_path: Path = Path("data/duals.pkl")
     outer_approximation_path: Path = Path("data/outer_approximation.pkl")
     solver_log_path: Path = Path("solver.log")
+    manifest_path: Path = Path("data/manifest.json")
     solver_name: str = "highs"
     solver_feasibility_tolerance: float = 1e-4
-    output_datasets: dict[str, OutputDataset] = {
-        "capacity": OutputDataset(path=Path("data/installed_capacity_xr.pkl"), dims=["index", "technology"]),
-        "generation": OutputDataset(path=Path("data/generation_over_snapshots.pkl"), dims=["index", "snapshot", "technology"]),
-        # "wind_generation": OutputDataset(path=Path("data/wind_generation.pkl"), dims=["snapshot", "technology"]),
-        # "cost": OutputDataset(path=Path("data/cost_summary.pkl"), dims=["technology"]),
-        # "price": OutputDataset(path=Path("data/price.pkl"), dims=["snapshot", "node"]),
-    }
-    
-    plots: dict[str, Plot] = {
-        "generation": Plot(
-            type="stacked_timeseries",
-            dataset="generation",
-            x_dim="snapshot",
-            categories_dim="technology",
-        ),
-        "capacity": Plot(
-            type="bar",
-            dataset="capacity",
-            x_dim="technology",
-        ),
-        "total generation": Plot(
-            type="timeseries",
-            dataset="generation",
-            x_dim="snapshot",
-        )
-    }
-    
 
     @property
     def solver_options(self) -> dict:

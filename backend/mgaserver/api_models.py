@@ -36,9 +36,15 @@ class DimensionRange(BaseModel):
     max: float
 
 
+class DimensionEntry(BaseModel):
+    range: DimensionRange
+    info: str = ""
+    unit: str = ""
+
+
 class InitResponse(BaseModel):
     obj_label: str
-    dimensions: dict[str, DimensionRange]
+    dimensions: dict[str, DimensionEntry]
     point: dict[str, float]
 
 

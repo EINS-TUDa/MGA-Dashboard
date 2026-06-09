@@ -27,7 +27,7 @@ def test_point_2_alpha(points_df, dimensions):
         "battery": 0.3 * 25 + 0.7 * 20,
         "TOTEX": 0.3 * 35 + 0.7 * 40
     })
-    alpha = point_2_alpha(point, points_df)
+    alpha = point_2_alpha(point, points_df, obj_label="TOTEX")
     expected = Alpha([0.3, 0.7], index=[0, 2])
     pd.testing.assert_series_equal(alpha, expected)
 
@@ -39,7 +39,7 @@ def test_interpolate():
     })
     point_start = points.iloc[0]
     point_end = points.iloc[4]
-    breakpoints = interpolate(points, point_start, point_end)
+    breakpoints = interpolate(points, point_start, point_end, obj_label="TOTEX")
 
     expected = [
         Breakpoint(beta=0,    alpha=Alpha([1.0], index=[0]), point=pd.Series({"wind": 1.0, "TOTEX": 5.0})),
@@ -141,12 +141,12 @@ class TestLinearLowerBounds:
         return [bp_start, bp_end]
 
     def test_returns_one_bound_per_nonzero_alpha(self, simple_points, simple_duals, simple_breakpoints):
-        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals)
+        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals, obj_label="TOTEX")
         # nonzero_index = {0, 1} → two bounds
         assert len(result) == 2
 
     def test_all_results_are_linear_bound(self, simple_points, simple_duals, simple_breakpoints):
-        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals)
+        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals, obj_label="TOTEX")
         assert all(isinstance(b, LinearBound) for b in result)
 
     def test_slope_and_intercept_for_point_0(self, simple_points, simple_duals, simple_breakpoints):
@@ -154,7 +154,7 @@ class TestLinearLowerBounds:
         # duals[0] = [x=0.5, y=0.3]
         # slope     = (3-1)*0.5 + (4-2)*0.3 = 1.0 + 0.6 = 1.6
         # intercept = (1-1)*0.5 + (2-2)*0.3 + 10 = 10.0
-        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals)
+        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals, obj_label="TOTEX")
         bounds = {round(b.intercept, 6): b for b in result}
         b0 = bounds[10.0]
         assert b0.slope == pytest.approx(1.6)
@@ -164,7 +164,7 @@ class TestLinearLowerBounds:
         # duals[1] = [x=0.2, y=0.1]
         # slope     = (3-1)*0.2 + (4-2)*0.1 = 0.4 + 0.2 = 0.6
         # intercept = (1-3)*0.2 + (2-4)*0.1 + 20 = -0.4 - 0.2 + 20 = 19.4
-        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals)
+        result = linear_lower_bounds(simple_points, simple_breakpoints, simple_duals, obj_label="TOTEX")
         bounds = {round(b.intercept, 6): b for b in result}
         b1 = bounds[round(19.4, 6)]
         assert b1.slope == pytest.approx(0.6)
@@ -172,13 +172,13 @@ class TestLinearLowerBounds:
 
     def test_duplicate_alpha_indices_counted_once(self, simple_points, simple_duals, simple_breakpoints):
         # Repeat bp_start — index 0 appears in two breakpoints, should still yield one bound for it
-        result = linear_lower_bounds(simple_points, simple_breakpoints * 2, simple_duals)
+        result = linear_lower_bounds(simple_points, simple_breakpoints * 2, simple_duals, obj_label="TOTEX")
         assert len(result) == 2
 
     def test_single_breakpoint_pair_same_point(self, simple_points, simple_duals):
         # start == end: slope should be 0
         bp = Breakpoint(beta=0.0, alpha=Alpha([1.0], index=[0]), point=simple_points.iloc[0])
-        result = linear_lower_bounds(simple_points, [bp, bp], simple_duals)
+        result = linear_lower_bounds(simple_points, [bp, bp], simple_duals, obj_label="TOTEX")
         for b in result:
             assert b.slope == pytest.approx(0.0)
 
@@ -438,7 +438,7 @@ class TestNavigateOuterApproximation:
             "x":     {"direction": ">=", "value": 5.0, "delta": 2.0},
             "TOTEX": {"direction": ">=", "value": 0.0, "delta": 0.0},
         })
-        output_c, point = navigate_outer_approximation(simple_model, c)
+        output_c, point = navigate_outer_approximation(simple_model, c, obj_label="TOTEX")
         assert isinstance(output_c, Constraints)
         assert isinstance(point, pd.Series)
 
@@ -447,7 +447,7 @@ class TestNavigateOuterApproximation:
             "x":     {"direction": ">=", "value": 5.0, "delta": 2.0},
             "TOTEX": {"direction": ">=", "value": 0.0, "delta": 0.0},
         })
-        output_c, _ = navigate_outer_approximation(simple_model, c)
+        output_c, _ = navigate_outer_approximation(simple_model, c, obj_label="TOTEX")
         assert list(output_c.index) == list(c.index)
 
     def test_feasible_constraint_direction_unchanged(self, simple_model):
@@ -456,7 +456,7 @@ class TestNavigateOuterApproximation:
             "x":     {"direction": ">=", "value": 5.0, "delta": 2.0},
             "TOTEX": {"direction": ">=", "value": 0.0, "delta": 0.0},
         })
-        output_c, _ = navigate_outer_approximation(simple_model, c)
+        output_c, _ = navigate_outer_approximation(simple_model, c, obj_label="TOTEX")
         assert output_c.loc["x", "direction"] == ">="
 
     def test_infeasible_constraint_becomes_equality(self, simple_model):
@@ -465,13 +465,13 @@ class TestNavigateOuterApproximation:
             "x":     {"direction": ">=", "value": 25.0, "delta": 2.0},
             "TOTEX": {"direction": ">=", "value":  0.0, "delta": 0.0},
         })
-        output_c, _ = navigate_outer_approximation(simple_model, c)
+        output_c, _ = navigate_outer_approximation(simple_model, c, obj_label="TOTEX")
         assert output_c.loc["x", "direction"] == "=="
 
     def test_point_dimensions_match_oa_variables(self, simple_oa_df, simple_model):
         coef_cols = [c for c in simple_oa_df.columns if c not in ("direction", "RHS")]
         c = _make_constraints({col: {"direction": ">=", "value": 0.0, "delta": 0.0} for col in coef_cols})
-        _, point = navigate_outer_approximation(simple_model, c)
+        _, point = navigate_outer_approximation(simple_model, c, obj_label="TOTEX")
         assert set(point.index) == set(coef_cols)
 
     def test_point_satisfies_outer_approximation(self, simple_model):
@@ -480,7 +480,7 @@ class TestNavigateOuterApproximation:
             "x":     {"direction": ">=", "value": 5.0, "delta": 2.0},
             "TOTEX": {"direction": ">=", "value": 0.0, "delta": 0.0},
         })
-        _, point = navigate_outer_approximation(simple_model, c)
+        _, point = navigate_outer_approximation(simple_model, c, obj_label="TOTEX")
         assert float(point["x"]) >= -1e-5
         assert float(point["x"]) <= 20.0 + 1e-5
         assert float(point["TOTEX"]) >= float(point["x"]) - 1e-5

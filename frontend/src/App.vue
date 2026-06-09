@@ -1,11 +1,39 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import Navigate from './components/Navigate.vue'
 import Traverse from './components/Traverse.vue'
 import logoTU from './assets/logo_tu_darmstadt.svg'
 import logoMGA from './assets/mga_logo.svg'
 
 const beta = ref(0)
+const splitPercent = ref(40)
+const contentAreaRef = ref(null)
+let dragging = false
+
+const onDividerMousedown = (e) => {
+  dragging = true
+  e.preventDefault()
+  document.addEventListener('mousemove', onMousemove)
+  document.addEventListener('mouseup', onMouseup)
+}
+
+const onMousemove = (e) => {
+  if (!dragging) return
+  const rect = contentAreaRef.value.getBoundingClientRect()
+  const pct = ((e.clientX - rect.left) / rect.width) * 100
+  splitPercent.value = Math.min(Math.max(pct, 15), 85)
+}
+
+const onMouseup = () => {
+  dragging = false
+  document.removeEventListener('mousemove', onMousemove)
+  document.removeEventListener('mouseup', onMouseup)
+}
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onMousemove)
+  document.removeEventListener('mouseup', onMouseup)
+})
 
 /** @type {import('vue').Ref<'naviagte' | 'traverse'>} */
 const mode = ref('naviagte')
@@ -77,8 +105,17 @@ const toggleMode = () => {
       </div>
     </header>
 
-    <main class="content-area">
-      <Navigate :active="mode === 'naviagte'" :beta="beta" v-model:path="path" @navigated="onNavigated" />
+    <main class="content-area" ref="contentAreaRef">
+      <Navigate
+        :active="mode === 'naviagte'"
+        :beta="beta"
+        v-model:path="path"
+        @navigated="onNavigated"
+        :style="{ flex: 'none', width: splitPercent + '%' }"
+      />
+      <div class="divider" @mousedown="onDividerMousedown">
+        <span class="divider-handle" />
+      </div>
       <Traverse :active="mode === 'traverse'" :path="path" v-model:beta="beta" />
     </main>
   </div>
@@ -206,12 +243,36 @@ body {
 .content-area {
   display: flex;
   flex: 1;
-  gap: 10px;
   overflow: hidden;
   padding: 10px;
+  gap: 0;
 }
 
 .content-area > * {
   min-width: 0;
+}
+
+.divider {
+  flex: none;
+  width: 8px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  user-select: none;
+}
+
+.divider:hover .divider-handle,
+.divider:active .divider-handle {
+  background: #3e8ed0;
+}
+
+.divider-handle {
+  width: 3px;
+  height: 40px;
+  border-radius: 2px;
+  background: #cccccc;
+  transition: background 0.2s;
 }
 </style>

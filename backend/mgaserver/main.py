@@ -6,24 +6,26 @@ import pandas as pd
 import xarray as xr
 from fastapi import FastAPI, HTTPException
 
-from .api_models import ConstraintRow, ConstraintsPayload, BreakpointResult, NavigateResponse, ConstraintChangeItem, DimensionRange, InitResponse, InitPlotResponse, PlotRequest, PlotResponse, LowerBoundRequest, LowerBoundResponse, LowerBoundPointResult
+from .api_models import ConstraintRow, ConstraintsPayload, BreakpointResult, NavigateResponse, ConstraintChangeItem, DimensionRange, DimensionEntry, InitResponse, InitPlotResponse, PlotRequest, PlotResponse, LowerBoundRequest, LowerBoundResponse, LowerBoundPointResult
 from .schemes import Constraints, Alpha, Breakpoint
 from .core import navigate, interpolate, get_plot_data, describe_changes, linear_lower_bounds, upper_envelope
-from .config import settings
+from .config import settings, load_manifest, Manifest
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-OBJ_LABEL = settings.obj_label
 points: pd.DataFrame = pd.DataFrame()
 duals: pd.DataFrame = pd.DataFrame()
 outer_approximation: pd.DataFrame
 output_datasets: dict[str, xr.DataArray]
+manifest: Manifest
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global points, duals, outer_approximation, output_datasets
+    global points, duals, outer_approximation, output_datasets, manifest
+    manifest = load_manifest(settings.manifest_path)
+
 
     # points pickle: DataFrame, one row per MGA solution point.
     #   Index  : integer (0-based)
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
     #     0.0   1.0   -1.0    <=          0.0
     # outer_approximation = pd.read_pickle(settings.outer_approximation_path)
 
-    output_datasets = {name: pickle.loads(ds.path.read_bytes()) for name, ds in settings.output_datasets.items()}
+    output_datasets = {name: pickle.loads(ds.path.read_bytes()) for name, ds in manifest.output_datasets.items()}
     yield
 
 
@@ -68,11 +70,15 @@ async def log_requests(request, call_next):
 
 @app.get("/init", response_model=InitResponse)
 def get_init() -> InitResponse:
-    optimal_point = points.loc[points[OBJ_LABEL].idxmin()]
+    optimal_point = points.loc[points[manifest.obj_label].idxmin()]
     return InitResponse(
-        obj_label=OBJ_LABEL,
+        obj_label=manifest.obj_label,
         dimensions={
-            col: DimensionRange(min=float(points[col].min()), max=float(points[col].max()))
+            col: DimensionEntry(
+                range=DimensionRange(min=float(points[col].min()), max=float(points[col].max())),
+                info=manifest.dimension_info.get(col, ""),
+                unit=manifest.dimension_unit.get(col, ""),
+            )
             for col in points.columns
         },
         point=optimal_point.to_dict(),
@@ -81,7 +87,7 @@ def get_init() -> InitResponse:
 
 @app.get("/init_plot", response_model=InitPlotResponse)
 def get_init_plot() -> InitPlotResponse:
-    return InitPlotResponse(datasets=list(settings.plots.keys()), obj_label=OBJ_LABEL)
+    return InitPlotResponse(datasets=list(manifest.plots.keys()), obj_label=manifest.obj_label)
 
 
 @app.post("/navigate", response_model=NavigateResponse)
@@ -100,12 +106,12 @@ def run_navigation(payload: ConstraintsPayload) -> NavigateResponse:
         # that convention here rather than using 400 Bad Request.
         raise HTTPException(status_code=422, detail=str(e))
     logger.info("navigate: calling navigate()")
-    output_constraints, point = navigate(points, input_constraints)
+    output_constraints, point = navigate(points, input_constraints, manifest.obj_label)
     logger.info("navigate: calling interpolate()")
     logger.info("interpolate point_start:\n%s", input_constraints["value"].to_string())
     logger.info("interpolate point_end:\n%s", point.to_string())
     logger.info("constraints:\n%s", input_constraints[["value", "direction", "delta"]].to_string())
-    breakpoints = interpolate(points, input_constraints["value"], point)
+    breakpoints = interpolate(points, input_constraints["value"], point, manifest.obj_label)
     logger.info("navigate: building response")
     constraints_out = {
         label: ConstraintRow(**row.to_dict())
@@ -121,13 +127,13 @@ def run_navigation(payload: ConstraintsPayload) -> NavigateResponse:
 
 @app.post("/plot_data", response_model=PlotResponse)
 def get_plot_endpoint(payload: PlotRequest) -> PlotResponse:
-    if payload.name not in settings.plots:
+    if payload.name not in manifest.plots:
         raise HTTPException(status_code=404, detail=f"Plot '{payload.name}' not found")
 
+    plot = manifest.plots[payload.name]
     alphas = [Alpha(pd.Series({int(k): v for k, v in item.alpha.items()})) for item in payload.breakpoints]
-    da = output_datasets[settings.plots[payload.name].dataset]
-    result = get_plot_data(alphas, payload.name, da)
-    plot = settings.plots[payload.name]
+    da = output_datasets[plot.dataset]
+    result = get_plot_data(alphas, plot, da)
     return PlotResponse(type=plot.type, betas=[item.beta for item in payload.breakpoints], x_dim=result["x_dim"], data=result["data"])
 
 
@@ -141,7 +147,7 @@ def get_lower_bound(payload: LowerBoundRequest) -> LowerBoundResponse:
         )
         for item in payload.breakpoints
     ]
-    bounds = linear_lower_bounds(points, breakpoint_objs, duals)
+    bounds = linear_lower_bounds(points, breakpoint_objs, duals, manifest.obj_label)
     envelope = upper_envelope(bounds)
     return LowerBoundResponse(points=[LowerBoundPointResult(beta=p.beta, value=p.value) for p in envelope])
 

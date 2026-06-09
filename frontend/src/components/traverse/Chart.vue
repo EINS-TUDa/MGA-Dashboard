@@ -285,6 +285,8 @@ watch(() => props.beta, () => {
   }
 })
 
+let resizeObserver = null
+
 onMounted(async () => {
   const initData = await get('/init_plot')
   objLabel.value = String(initData?.obj_label ?? '')
@@ -294,10 +296,15 @@ onMounted(async () => {
   if (types.value.length > 0) type.value = types.value[0]
   if (!chartInstance && plotRef.value) chartInstance = echarts.init(plotRef.value)
   window.addEventListener('resize', resizeChart)
+  if (plotRef.value) {
+    resizeObserver = new ResizeObserver(resizeChart)
+    resizeObserver.observe(plotRef.value)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', resizeChart)
+  resizeObserver?.disconnect()
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null

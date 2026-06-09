@@ -56,16 +56,17 @@ class TestInitEndpoint:
         response = client.get("/init")
         data = response.json()
         for col in points_df.columns:
-            dim = data["dimensions"][col]
-            assert "min" in dim
-            assert "max" in dim
+            r = data["dimensions"][col]["range"]
+            assert "min" in r
+            assert "max" in r
 
     def test_dimension_min_max_values(self, client, points_df):
         response = client.get("/init")
         data = response.json()
         for col in points_df.columns:
-            assert data["dimensions"][col]["min"] == pytest.approx(float(points_df[col].min()))
-            assert data["dimensions"][col]["max"] == pytest.approx(float(points_df[col].max()))
+            r = data["dimensions"][col]["range"]
+            assert r["min"] == pytest.approx(float(points_df[col].min()))
+            assert r["max"] == pytest.approx(float(points_df[col].max()))
 
     def test_response_contains_optimal_point(self, client):
         response = client.get("/init")
@@ -77,11 +78,10 @@ class TestInitEndpoint:
         data = response.json()
         assert set(data["point"].keys()) == set(points_df.columns)
 
-    def test_optimal_point_minimizes_obj_label(self, client, points_df):
+    def test_optimal_point_minimizes_obj_label(self, client, points_df, manifest):
         response = client.get("/init")
         data = response.json()
-        from mgaserver.config import settings
-        assert data["point"][settings.obj_label] == pytest.approx(float(points_df[settings.obj_label].min()))
+        assert data["point"][manifest.obj_label] == pytest.approx(float(points_df[manifest.obj_label].min()))
 
     def test_response_does_not_contain_datasets(self, client):
         response = client.get("/init")
@@ -100,17 +100,15 @@ class TestInitPlotEndpoint:
         assert "datasets" in data
         assert isinstance(data["datasets"], list)
 
-    def test_response_contains_obj_label(self, client):
-        from mgaserver.config import settings
+    def test_response_contains_obj_label(self, client, manifest):
         response = client.get("/init_plot")
         data = response.json()
         assert "obj_label" in data
-        assert data["obj_label"] == settings.obj_label
+        assert data["obj_label"] == manifest.obj_label
 
-    def test_datasets_match_config(self, client):
-        from mgaserver.config import settings
+    def test_datasets_match_config(self, client, manifest):
         response = client.get("/init_plot")
-        assert set(response.json()["datasets"]) == set(settings.plots.keys())
+        assert set(response.json()["datasets"]) == set(manifest.plots.keys())
 
 
 @pytest.fixture

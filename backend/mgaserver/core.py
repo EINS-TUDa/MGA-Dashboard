@@ -5,10 +5,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from .config import settings
+from .config import settings, Plot
 from .schemes import Constraints, Breakpoint, Point, Points, Alpha, ConstraintChange, LinearBound, LowerBoundPoint
-
-OBJ_LABEL = settings.obj_label
 
 _solver_handler = logging.FileHandler(settings.solver_log_path)
 _solver_handler.setLevel(logging.DEBUG)
@@ -22,6 +20,7 @@ for _logger_name in ("linopy.model", "linopy.io", "linopy.constants", "gurobipy"
 def navigate(
     points: Points,
     constraints: Constraints,
+    obj_label: str,
 ) -> tuple[Constraints, Point]:
     constraints.validate(points)
     output_df = constraints.copy(deep=True)
@@ -100,7 +99,7 @@ def navigate(
         mdl.add_constraints(f.loc[func] == f.loc[func].solution)
 
     # Find the solution with the minimum cost
-    mdl.add_objective(f.loc[OBJ_LABEL], sense="min", overwrite=True)
+    mdl.add_objective(f.loc[obj_label], sense="min", overwrite=True)
     mdl.solve(solver_name=settings.solver_name, **settings.solver_options)
 
     point = f.solution.to_series()
@@ -114,6 +113,7 @@ def interpolate(
     points: Points,
     point_start: Point,
     point_end: Point,
+    obj_label: str,
     threshold: float = 1e-3,
 ) -> list[Breakpoint]:
     output = []
@@ -121,20 +121,20 @@ def interpolate(
     def _period_interpolate(beta_start, p_start, beta_end, p_end, depth=0):
         beta_mid = (beta_start + beta_end) / 2
         p_mid = (p_start + p_end) / 2
-        alpha_mid_interpolate = point_2_alpha(p_mid, points)
+        alpha_mid_interpolate = point_2_alpha(p_mid, points, obj_label)
         p_mid_interpolate = alpha_2_point(alpha_mid_interpolate, points)
-        gap = p_mid[OBJ_LABEL] - p_mid_interpolate[OBJ_LABEL]
-        abs_threshold = threshold * abs(p_mid[OBJ_LABEL])
+        gap = p_mid[obj_label] - p_mid_interpolate[obj_label]
+        abs_threshold = threshold * abs(p_mid[obj_label])
         _interpolate_logger.debug("depth=%d beta=[%.4f,%.4f] gap=%.4f abs_threshold=%.4f", depth, beta_start, beta_end, gap, abs_threshold)
-        if p_mid_interpolate[OBJ_LABEL] < p_mid[OBJ_LABEL] - abs_threshold:
+        if p_mid_interpolate[obj_label] < p_mid[obj_label] - abs_threshold:
             output.append(Breakpoint(beta_mid, alpha_mid_interpolate, p_mid_interpolate))
             _period_interpolate(beta_mid, p_mid_interpolate, beta_end, p_end, depth + 1)
             _period_interpolate(beta_start, p_start, beta_mid, p_mid_interpolate, depth + 1)
 
     _interpolate_logger.info("point_start:\n%s", point_start.to_string())
     _interpolate_logger.info("point_end:\n%s", point_end.to_string())
-    alpha_start = point_2_alpha(point_start, points)
-    alpha_end = point_2_alpha(point_end, points)
+    alpha_start = point_2_alpha(point_start, points, obj_label)
+    alpha_end = point_2_alpha(point_end, points, obj_label)
     p_start = alpha_2_point(alpha_start, points)
     p_end = alpha_2_point(alpha_end, points)
     output.append(Breakpoint(0, alpha_start, p_start))
@@ -154,11 +154,10 @@ def aggregate_by_alpha(da: xr.DataArray, alpha: Alpha) -> xr.DataArray:
     return (da * weights).sum("index")
 
 
-def xr_to_series(da: xr.DataArray, plot_name: str) -> dict | list:
+def xr_to_series(da: xr.DataArray, plot: Plot) -> dict | list:
     # da: xarray aggregated over alpha (no "index" dimension).
     # Returns a dict {category -> values over x_dim} if the plot has a categories_dim,
     # or a plain list over x_dim otherwise.
-    plot = settings.plots[plot_name]
     dims_to_sum = [d for d in da.dims if d != plot.x_dim and d != plot.categories_dim]
     aggregated = da.sum(dims_to_sum) if dims_to_sum else da
 
@@ -170,23 +169,22 @@ def xr_to_series(da: xr.DataArray, plot_name: str) -> dict | list:
     return aggregated.values.tolist()
 
 
-def point_2_alpha(point: Point, points: Points) -> Alpha:
+def point_2_alpha(point: Point, points: Points, obj_label: str) -> Alpha:
     mdl = linopy.Model()
     alpha = mdl.add_variables(coords=[points.index], lower=0, name="alpha")
     mdl.add_constraints(alpha.sum() == 1)
     for func in points.columns:
-        if func != OBJ_LABEL:
+        if func != obj_label:
             mdl.add_constraints((points[func] * alpha).sum() == point[func])
-    mdl.add_objective((points[OBJ_LABEL] * alpha).sum(), sense="min")
+    mdl.add_objective((points[obj_label] * alpha).sum(), sense="min")
     mdl.solve(solver_name=settings.solver_name, **settings.solver_options)
     return Alpha(alpha.solution.clip(min=0))
 
 
-def get_plot_data(alphas: list[Alpha], plot_name: str, da: xr.DataArray) -> dict:
-    plot = settings.plots[plot_name]
+def get_plot_data(alphas: list[Alpha], plot: Plot, da: xr.DataArray) -> dict:
     return {
         "x_dim": da.coords[plot.x_dim].values.tolist(),
-        "data": [xr_to_series(aggregate_by_alpha(da, alpha), plot_name) for alpha in alphas],
+        "data": [xr_to_series(aggregate_by_alpha(da, alpha), plot) for alpha in alphas],
     }
 
 
@@ -251,7 +249,8 @@ def describe_changes(input_constraints: Constraints, output_constraints: Constra
 def linear_lower_bounds(
     points: Points,
     breakpoints: list[Breakpoint],
-    duals: Points
+    duals: Points,
+    obj_label: str,
 ) -> list[LinearBound]:
     nonzero_index = set()
     for bp in breakpoints:
@@ -260,8 +259,8 @@ def linear_lower_bounds(
     p_target = breakpoints[-1].point
     result = []
     for i in nonzero_index:
-        slope = float(((p_target - p_start).drop(OBJ_LABEL) * duals.loc[i]).sum())
-        intercept = float(((p_start.drop(OBJ_LABEL) - points.iloc[i].drop(OBJ_LABEL)) * duals.loc[i]).sum() + points.iloc[i][OBJ_LABEL])
+        slope = float(((p_target - p_start).drop(obj_label) * duals.loc[i]).sum())
+        intercept = float(((p_start.drop(obj_label) - points.iloc[i].drop(obj_label)) * duals.loc[i]).sum() + points.iloc[i][obj_label])
         result.append(LinearBound(slope=slope, intercept=intercept))
     return result
 
@@ -298,6 +297,7 @@ def build_outer_approximation(
 def navigate_outer_approximation(
     outer_approximation: linopy.Model,
     input_constraints: Constraints,
+    obj_label: str,
 ) -> tuple[Constraints, Point]:
     output_df = input_constraints.copy(deep=True)
     mdl = outer_approximation
@@ -367,7 +367,7 @@ def navigate_outer_approximation(
         mdl.add_constraints(f.loc[func] == f.loc[func].solution)
 
     # Find the solution with the minimum cost
-    mdl.add_objective(f.loc[OBJ_LABEL], sense="min", overwrite=True)
+    mdl.add_objective(f.loc[obj_label], sense="min", overwrite=True)
     mdl.solve(solver_name=settings.solver_name, **settings.solver_options)
 
     return output_df, f.solution.to_series()

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const props = defineProps({
   name: {
@@ -29,6 +29,10 @@ const props = defineProps({
   info: {
     type: String,
     required: true,
+  },
+  unit: {
+    type: String,
+    default: '',
   },
   value: {
     type: Number,
@@ -62,6 +66,46 @@ const selectDirection = (direction) => {
 }
 
 defineEmits(['handle-mousedown'])
+
+const showInfo = ref(false)
+const infoBtnRef = ref(null)
+const tooltipRef = ref(null)
+const tooltipStyle = ref({})
+
+const onInfoClick = () => {
+  showInfo.value = !showInfo.value
+}
+
+const onDocClick = (e) => {
+  if (infoBtnRef.value && !infoBtnRef.value.contains(e.target)) {
+    showInfo.value = false
+  }
+}
+
+const TOOLTIP_WIDTH = 220
+const PAD = 8
+
+watch(showInfo, async (val) => {
+  if (val) {
+    document.addEventListener('click', onDocClick)
+    await nextTick()
+    if (!infoBtnRef.value) return
+    const anchor = infoBtnRef.value.getBoundingClientRect()
+    let left = anchor.left + anchor.width / 2 - TOOLTIP_WIDTH / 2
+    left = Math.max(PAD, Math.min(left, window.innerWidth - TOOLTIP_WIDTH - PAD))
+    tooltipStyle.value = {
+      position: 'fixed',
+      top: `${anchor.bottom + 6}px`,
+      left: `${left}px`,
+      width: `${TOOLTIP_WIDTH}px`,
+    }
+  } else {
+    document.removeEventListener('click', onDocClick)
+    tooltipStyle.value = {}
+  }
+})
+
+onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 const isDeltaDisabled = computed(() => props.disabled || directionModel.value === '')
 
@@ -253,7 +297,32 @@ onUnmounted(() => {
           </svg>
         </span>
         <span class="priority-index">{{ order + 1 }}.</span>
-        <h4 class="priority-title">{{ name }}<span v-if="objective" class="obj-marker"> ∗</span></h4>
+        <h4 class="priority-title">{{ name }}<span v-if="unit" class="name-unit"> ({{ unit }})</span><span v-if="objective" class="obj-marker"> ∗</span></h4>
+        <span v-if="info" ref="infoBtnRef" class="info-wrap">
+          <button
+            type="button"
+            class="info-btn"
+            :class="{ 'is-active': showInfo }"
+            @click="onInfoClick"
+            aria-label="Show info"
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path fill="currentColor" d="M12 10.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-1 1.5h2v5h-2z"/>
+            </svg>
+          </button>
+          <Teleport to="body">
+            <div
+              v-if="showInfo"
+              ref="tooltipRef"
+              class="info-tooltip"
+              :style="tooltipStyle"
+            >
+              <span v-if="unit" class="tooltip-unit">{{ unit }}</span>
+              {{ info }}
+            </div>
+          </Teleport>
+        </span>
       </div>
       <div class="direction-group">
         <button
@@ -290,9 +359,8 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <p v-if="info" class="priority-info">{{ info }}</p>
 
-    <div class="range-values">
+<div class="range-values">
       <span>{{ formatByRange(min) }}</span>
       <span class="current-value">{{ formatByRange(value) }}</span>
       <span>{{ formatByRange(max) }}</span>
@@ -383,9 +451,68 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.name-unit {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
 .obj-marker {
   font-size: 1.3rem;
   line-height: 1;
+}
+
+.info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.info-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.info-btn:hover,
+.info-btn.is-active {
+  color: #3e8ed0;
+  background: #eff6ff;
+}
+
+.tooltip-unit {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #3e8ed0;
+  background: #eff6ff;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.info-tooltip {
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  z-index: 9999;
+  pointer-events: none;
 }
 
 .direction-group {
@@ -412,11 +539,6 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
-.priority-info {
-  margin: 8px 0 10px;
-  color: #6b7280;
-  font-size: 0.85rem;
-}
 
 .range-values {
   display: flex;

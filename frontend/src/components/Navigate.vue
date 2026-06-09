@@ -72,9 +72,9 @@ const loadInitData = async () => {
     throw new Error('Invalid init response: point must be an object')
   }
 
-  priorities.value = Object.entries(dimensions).map(([name, range], index) => {
-    const min = Number(range?.min)
-    const max = Number(range?.max)
+  priorities.value = Object.entries(dimensions).map(([name, entry], index) => {
+    const min = Number(entry?.range?.min)
+    const max = Number(entry?.range?.max)
 
     if (Number.isNaN(min) || Number.isNaN(max)) {
       throw new Error(`Invalid init response: range for ${name} must contain numeric min/max`)
@@ -88,7 +88,8 @@ const loadInitData = async () => {
 
     return {
       name,
-      info: '',
+      info: String(entry?.info ?? ''),
+      unit: String(entry?.unit ?? ''),
       min,
       max,
       order: index,
@@ -326,6 +327,7 @@ onMounted(() => {
           :start="priority.start"
           :end="priority.end"
           :info="priority.info"
+          :unit="priority.unit"
           :value="priority.value"
           v-model:delta="priority.delta"
           v-model:direction="priority.direction"
