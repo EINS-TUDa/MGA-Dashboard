@@ -12,7 +12,6 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard]>=0.136.1",
-    "gurobipy>=13.0.2",
     "linopy>=0.6.7",
     "pandera>=0.31.1",
     "pypsa>=1.2.0",

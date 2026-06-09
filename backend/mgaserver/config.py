@@ -7,12 +7,10 @@ from pydantic_settings import BaseSettings
 
 
 _SOLVER_SILENCE: dict[str, dict] = {
-    "gurobi": {"OutputFlag": 1},
     "highs": {"output_flag": False},
 }
 
 _SOLVER_FEASIBILITY_TOLERANCE_KEY: dict[str, str] = {
-    "gurobi": "FeasibilityTol",
     "highs": "primal_feasibility_tolerance",
 }
 
@@ -52,13 +50,27 @@ def load_manifest(path: Path) -> Manifest:
 class Settings(BaseSettings):
     app_name: str = "MGA Server"
     debug: bool = False
-    data_path: Path = Path("data/points.pkl")
-    duals_path: Path = Path("data/duals.pkl")
-    outer_approximation_path: Path = Path("data/outer_approximation.pkl")
+    data_dir: Path = Path("data")
     solver_log_path: Path = Path("solver.log")
-    manifest_path: Path = Path("data/manifest.json")
     solver_name: str = "highs"
     solver_feasibility_tolerance: float = 1e-4
+    allowed_origins: list[str] = ["*"]
+
+    @property
+    def data_path(self) -> Path:
+        return self.data_dir / "points.pkl"
+
+    @property
+    def duals_path(self) -> Path:
+        return self.data_dir / "duals.pkl"
+
+    @property
+    def outer_approximation_path(self) -> Path:
+        return self.data_dir / "outer_approximation.pkl"
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.data_dir / "manifest.json"
 
     @property
     def solver_options(self) -> dict:

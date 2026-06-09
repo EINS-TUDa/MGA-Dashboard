@@ -11,7 +11,7 @@ from .schemes import Constraints, Breakpoint, Point, Points, Alpha, ConstraintCh
 _solver_handler = logging.FileHandler(settings.solver_log_path)
 _solver_handler.setLevel(logging.DEBUG)
 _solver_handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
-for _logger_name in ("linopy.model", "linopy.io", "linopy.constants", "gurobipy", "google.cloud.storage"):
+for _logger_name in ("linopy.model", "linopy.io", "linopy.constants", "google.cloud.storage"):
     _log = logging.getLogger(_logger_name)
     _log.addHandler(_solver_handler)
     _log.propagate = False  # don't echo to console
