@@ -65,7 +65,7 @@ const toggleMode = () => {
         <h1 class="dashboard-title">MGA Exploration Dashboard</h1>
       </div>
 
-      <div class="header-center">
+      <div class="header-center" :style="{ left: `calc(${splitPercent}vw - ${splitPercent * 0.2}px + 14px)` }">
         <button
           type="button"
           class="mode-toggle"
@@ -177,7 +177,6 @@ body {
 .header-center {
   position: absolute;
   top: 50%;
-  left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
