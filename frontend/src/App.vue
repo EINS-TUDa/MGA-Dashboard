@@ -2,9 +2,15 @@
 import { ref, onUnmounted } from 'vue'
 import Navigate from './components/Navigate.vue'
 import Traverse from './components/Traverse.vue'
+import TutorialModal from './components/TutorialModal.vue'
 import logoTU from './assets/logo_tu_darmstadt.svg'
 import logoMGA from './assets/mga_logo.svg'
 
+const showTutorial = ref(true)
+
+const openGithub = () => {
+  window.open('https://github.com/EINS-TUDa/MGA-Dashboard', '_blank', 'noopener,noreferrer')
+}
 const beta = ref(0)
 const splitPercent = ref(40)
 const contentAreaRef = ref(null)
@@ -59,6 +65,8 @@ const toggleMode = () => {
 
 <template>
   <div class="full-window">
+    <TutorialModal v-model:open="showTutorial" />
+
     <header class="main-header">
       <div class="brand-left">
         <img :src="logoMGA" alt="MGA Logo" class="logo-mga" />
@@ -101,12 +109,24 @@ const toggleMode = () => {
       </div>
 
       <div class="brand-right">
+        <button
+          type="button"
+          class="help-btn"
+          @click="showTutorial = true"
+          aria-label="Open tutorial"
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path fill="currentColor" transform="translate(12 12) scale(0.65) translate(-12 -12)" d="M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17A1,1 0 0,0 9,18H15A1,1 0 0,0 16,17V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2M9,21A1,1 0 0,0 10,22H14A1,1 0 0,0 15,21V20H9V21Z" />
+          </svg>
+        </button>
         <a
           class="github-link"
           href="https://github.com/EINS-TUDa/MGA-Dashboard"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="GitHub repository"
+          @click.prevent="openGithub"
         >
           <svg viewBox="0 0 16 16" width="24" height="24" fill="currentColor">
             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
@@ -176,6 +196,22 @@ body {
 
 .logo-tu {
   height: 30px;
+}
+
+.help-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #1f2937;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.help-btn:hover {
+  color: #3e8ed0;
 }
 
 .github-link {
