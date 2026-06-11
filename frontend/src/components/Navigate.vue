@@ -368,7 +368,7 @@ onMounted(() => {
     </div>
 
     <div class="window-box message-box-wrap">
-      <MessageBox :messages="messages" />
+      <MessageBox :messages="messages" :normalize="normalize" :priorities="priorities" />
     </div>
   </section>
 </template>

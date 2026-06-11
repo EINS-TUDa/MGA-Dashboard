@@ -129,7 +129,7 @@ def run_navigation(payload: ConstraintsPayload) -> NavigateResponse:
         BreakpointResult(beta=bp.beta, alpha={str(k): v for k, v in bp.alpha.to_dict().items()}, point=bp.point.to_dict())
         for bp in breakpoints
     ]
-    changes_out = [ConstraintChangeItem(code=c.code, message=c.message) for c in describe_changes(input_constraints, output_constraints)]
+    changes_out = [ConstraintChangeItem(code=c.code, message=c.message, values=c.values, dim=c.dim) for c in describe_changes(input_constraints, output_constraints)]
     return NavigateResponse(constraints=constraints_out, breakpoints=breakpoints_out, changes=changes_out, point=point.to_dict())
 
 

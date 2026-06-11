@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { formatPercent, formatCompact } from '../../shared/numberFormat'
 
 const props = defineProps({
   name: {
@@ -82,12 +83,17 @@ const onDocClick = (e) => {
   }
 }
 
+const onScroll = () => {
+  showInfo.value = false
+}
+
 const TOOLTIP_WIDTH = 220
 const PAD = 8
 
 watch(showInfo, async (val) => {
   if (val) {
     document.addEventListener('click', onDocClick)
+    document.addEventListener('scroll', onScroll, true)
     await nextTick()
     if (!infoBtnRef.value) return
     const anchor = infoBtnRef.value.getBoundingClientRect()
@@ -101,11 +107,15 @@ watch(showInfo, async (val) => {
     }
   } else {
     document.removeEventListener('click', onDocClick)
+    document.removeEventListener('scroll', onScroll, true)
     tooltipStyle.value = {}
   }
 })
 
-onUnmounted(() => document.removeEventListener('click', onDocClick))
+onUnmounted(() => {
+  document.removeEventListener('click', onDocClick)
+  document.removeEventListener('scroll', onScroll, true)
+})
 
 const isDeltaDisabled = computed(() => props.disabled || directionModel.value === '')
 
@@ -124,8 +134,7 @@ const formatByRange = (value) => {
   if (!Number.isFinite(num)) return String(value)
 
   if (props.normalize) {
-    const rounded = Math.round(num * 10) / 10
-    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+    return formatPercent(num)
   }
 
   const displayMin = toDisplay(props.min)
@@ -134,11 +143,7 @@ const formatByRange = (value) => {
   const maxAbs = Math.max(Math.abs(displayMin), Math.abs(displayMax))
 
   if (minAbs >= 1_000) {
-    let divisor, suffix
-    if (maxAbs >= 1_000_000_000) { divisor = 1_000_000_000; suffix = 'B' }
-    else if (maxAbs >= 1_000_000) { divisor = 1_000_000; suffix = 'M' }
-    else { divisor = 1_000; suffix = 'k' }
-    return (num / divisor).toFixed(2).replace(/\.?0+$/, '') + suffix
+    return formatCompact(num, maxAbs)
   }
 
   const range = Math.abs(displayMax - displayMin)

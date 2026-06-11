@@ -155,5 +155,7 @@ class LowerBoundPoint(NamedTuple):
 class ConstraintChange(NamedTuple):
     code: str
     message: str
+    values: list[float]
+    dim: str
 
 

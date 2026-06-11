@@ -22,6 +22,8 @@ class BreakpointResult(BaseModel):
 class ConstraintChangeItem(BaseModel):
     code: str
     message: str
+    values: list[float]
+    dim: str
 
 
 class NavigateResponse(BaseModel):

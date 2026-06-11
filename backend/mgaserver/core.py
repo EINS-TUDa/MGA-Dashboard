@@ -207,16 +207,20 @@ def describe_changes(input_constraints: Constraints, output_constraints: Constra
             if in_dir == ">=":
                 messages.append(ConstraintChange(
                     "infeasible_lb",
-                    f"{dim}: targeted minimum {in_val:.4g} + {in_delta:.4g} = {(in_val+in_delta):.4g} is infeasible; "
-                    f"constrained to equality within a \u00b1{out_delta:.4g} window around {in_val:.4g};"
-                    f"the maximum feasible is {in_val:.4g} - {out_delta:.4g} = {(in_val-out_delta):.4g}"
+                    f"targeted minimum {{}} + {{}} = {{}} is infeasible; "
+                    f"constrained to equality within a \u00b1{{}} window around {{}};"
+                    f"the maximum feasible is {{}} - {{}} = {{}}",
+                    [in_val, in_delta, in_val + in_delta, out_delta, in_val, in_val, out_delta, in_val - out_delta],
+                    dim,
                 ))
             elif in_dir == "<=":
                 messages.append(ConstraintChange(
                     "infeasible_ub",
-                    f"{dim}: targeted maximum {in_val:.4g} - {in_delta:.4g} = {(in_val-in_delta):.4g} is infeasible; "
-                    f"constrained to equality within a \u00b1{out_delta:.4g} window around {in_val:.4g};"
-                    f"the minimum feasible is {in_val:.4g} + {out_delta:.4g} = {(in_val+out_delta):.4g}"
+                    f"targeted maximum {{}} - {{}} = {{}} is infeasible; "
+                    f"constrained to equality within a \u00b1{{}} window around {{}};"
+                    f"the minimum feasible is {{}} + {{}} = {{}}",
+                    [in_val, in_delta, in_val - in_delta, out_delta, in_val, in_val, out_delta, in_val + out_delta],
+                    dim,
                 ))
         else:
             if out_delta > in_delta:
@@ -228,7 +232,9 @@ def describe_changes(input_constraints: Constraints, output_constraints: Constra
                     )
                 messages.append(ConstraintChange(
                     "delta_widened",
-                    f"{dim}: equality tolerance around {in_val:.4g} widened from {in_delta:.4g} to {out_delta:.4g}"
+                    f"equality tolerance around {{}} widened from {{}} to {{}}",
+                    [in_val, in_delta, out_delta],
+                    dim,
                 ))
             elif out_delta < in_delta:
                 # the direction is the same, either >= or <=
@@ -237,10 +243,11 @@ def describe_changes(input_constraints: Constraints, output_constraints: Constra
                         f"{dim}: delta reduced for a '{in_dir}' constraint; "
                         f"only '>=' and '<=' constraints can have their margin reduced"
                     )
-                direction_word = "above" if in_dir == ">=" else "below"
                 messages.append(ConstraintChange(
                     "delta_reduced",
-                    f"{dim}: margin {direction_word} {in_val:.4g} reduced from {in_delta:.4g} to {out_delta:.4g}"
+                    f"delta reduced from {{}} to {{}}",
+                    [in_delta, out_delta],
+                    dim,
                 ))
 
     return messages

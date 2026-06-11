@@ -1,6 +1,16 @@
 <script setup>
+import { formatPercent, formatCompact } from '../../shared/numberFormat'
+
 const props = defineProps({
   messages: {
+    type: Array,
+    default: () => [],
+  },
+  normalize: {
+    type: Boolean,
+    default: false,
+  },
+  priorities: {
     type: Array,
     default: () => [],
   },
@@ -14,6 +24,24 @@ const CODE_CLASS = {
 }
 
 const cardClass = (code) => `is-${CODE_CLASS[code] ?? 'info'}`
+
+const formatValue = (v, dim) => {
+  const num = Number(v)
+  if (!Number.isFinite(num)) return String(v)
+
+  const min = props.priorities.find((p) => p.name === dim)?.min
+
+  if (props.normalize && min !== undefined && min !== 0) {
+    return `${formatPercent((num / min) * 100)}%`
+  }
+
+  return formatCompact(num)
+}
+
+const formatMessage = (message, values, dim) => {
+  let i = 0
+  return message.replace(/\{\}/g, () => formatValue(values[i++], dim))
+}
 </script>
 
 <template>
@@ -36,7 +64,8 @@ const cardClass = (code) => `is-${CODE_CLASS[code] ?? 'info'}`
         :class="cardClass(message.code)"
       >
         <div class="message-body">
-          {{ message.message }}
+          <strong class="message-dim">{{ message.dim }}:</strong>
+          {{ formatMessage(message.message, message.values, message.dim) }}
         </div>
       </article>
     </div>
@@ -93,6 +122,10 @@ const cardClass = (code) => `is-${CODE_CLASS[code] ?? 'info'}`
   color: #1f2937;
   overflow-wrap: break-word;
   word-break: break-word;
+}
+
+.message-dim {
+  font-weight: 700;
 }
 
 .message-window.is-info {

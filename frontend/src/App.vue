@@ -159,6 +159,7 @@ body {
   padding: 0;
   height: 100vh;
   overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 #app {
