@@ -109,11 +109,10 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 const isDeltaDisabled = computed(() => props.disabled || directionModel.value === '')
 
-const toDisplay = (v) => (props.normalize && props.min !== 0) ? Number(v) / props.min : Number(v)
-const fromDisplay = (v) => (props.normalize && props.min !== 0) ? Number(v) * props.min : Number(v)
+const toDisplay = (v) => (props.normalize && props.min !== 0) ? (Number(v) / props.min) * 100 : Number(v)
+const fromDisplay = (v) => (props.normalize && props.min !== 0) ? (Number(v) / 100) * props.min : Number(v)
 
 const displayDecimals = computed(() => {
-  if (props.normalize) return 2
   const range = Math.abs(toDisplay(props.max) - toDisplay(props.min))
   const step = range * 0.001
   if (!Number.isFinite(step) || step <= 0) return 0
@@ -123,6 +122,11 @@ const displayDecimals = computed(() => {
 const formatByRange = (value) => {
   const num = toDisplay(value)
   if (!Number.isFinite(num)) return String(value)
+
+  if (props.normalize) {
+    const rounded = Math.round(num * 10) / 10
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  }
 
   const displayMin = toDisplay(props.min)
   const displayMax = toDisplay(props.max)
@@ -142,7 +146,7 @@ const formatByRange = (value) => {
   if (!Number.isFinite(step) || step <= 0) return String(num)
 
   const rounded = Math.round(num / step) * step
-  return rounded.toFixed(displayDecimals.value).replace(/\.?0+$/, '')
+  return rounded.toFixed(displayDecimals.value).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
 }
 
 const compactDivisor = computed(() => {

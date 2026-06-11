@@ -119,45 +119,63 @@ const loadInitData = async () => {
  */
 const clonePriorities = (source) => source.map((priority) => ({ ...priority }))
 
+const isNavigating = ref(false)
+let navigateController = null
+
 const navigate = async () => {
-  const constraints = {}
+  navigateController?.abort()
+  const controller = new AbortController()
+  navigateController = controller
+  isNavigating.value = true
 
-  for (const priority of priorities.value) {
-    constraints[priority.name] = {
-      delta: Number(priority.delta),
-      direction: priority.direction,
-      value: Number(priority.value),
+  try {
+    const constraints = {}
+
+    for (const priority of priorities.value) {
+      constraints[priority.name] = {
+        delta: Number(priority.delta),
+        direction: priority.direction,
+        value: Number(priority.value),
+      }
+    }
+
+    const data = await post('/navigate', { constraints }, { signal: controller.signal })
+    const nextConstraints = data.constraints
+    const nextPoint = data.point
+    const nextChanges = data.changes
+
+    for (const priority of priorities.value) {
+      const currentValue = Number(priority.value)
+      const row = nextConstraints[priority.name]
+
+      priority.delta = Number(row.delta)
+      priority.direction = row.direction
+      priority.start = currentValue
+      priority.end = Number(nextPoint[priority.name])
+    }
+
+    messages.value = nextChanges
+    path.value = data.breakpoints
+
+    const firstPoint = data.breakpoints[0]?.point
+    if (firstPoint) {
+      const objPriority = priorities.value.find((p) => p.name === objLabel.value)
+      if (objPriority) {
+        objPriority.start = Number(firstPoint[objLabel.value])
+      }
+    }
+
+    prioritiesSnapshot.value = clonePriorities(priorities.value)
+    emit('navigated')
+  } catch (error) {
+    if (controller.signal.aborted) return
+    throw error
+  } finally {
+    if (navigateController === controller) {
+      isNavigating.value = false
+      navigateController = null
     }
   }
-
-  const data = await post('/navigate', { constraints })
-  const nextConstraints = data.constraints
-  const nextPoint = data.point
-  const nextChanges = data.changes
-
-  for (const priority of priorities.value) {
-    const currentValue = Number(priority.value)
-    const row = nextConstraints[priority.name]
-
-    priority.delta = Number(row.delta)
-    priority.direction = row.direction
-    priority.start = currentValue
-    priority.end = Number(nextPoint[priority.name])
-  }
-
-  messages.value = nextChanges
-  path.value = data.breakpoints
-
-  const firstPoint = data.breakpoints[0]?.point
-  if (firstPoint) {
-    const objPriority = priorities.value.find((p) => p.name === objLabel.value)
-    if (objPriority) {
-      objPriority.start = Number(firstPoint[objLabel.value])
-    }
-  }
-
-  prioritiesSnapshot.value = clonePriorities(priorities.value)
-  emit('navigated')
 }
 
 const reset = () => {
@@ -268,6 +286,12 @@ onMounted(() => {
             </svg>
           </span>
           <h3 class="header-title">Navigation</h3>
+          <span v-if="isNavigating" class="spinner" aria-label="Loading" role="status">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9" stroke-opacity="0.25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke-linecap="round" />
+            </svg>
+          </span>
         </div>
         <div class="header-actions" :style="{ visibility: active ? 'visible' : 'hidden' }">
           <button
@@ -389,6 +413,17 @@ onMounted(() => {
 .header-icon {
   display: inline-flex;
   color: #1f2937;
+}
+
+.spinner {
+  display: inline-flex;
+  color: #3e8ed0;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .header-title {
