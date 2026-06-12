@@ -1,4 +1,4 @@
-# MGA Compass
+# <img src="docs/mga_logo.svg" alt="MGA Compass logo" width="48" height="48" align="center" /> MGA Compass
 
 ![License](https://img.shields.io/github/license/EINS-TUDa/MGA-Compass)
 [![Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://enormous-raphaela-eins-tu-darmstadt-215a3282.koyeb.app/)
