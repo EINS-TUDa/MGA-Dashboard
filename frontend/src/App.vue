@@ -237,7 +237,7 @@ body {
   font-size: 1.25rem;
   font-weight: 800;
   color: #1f2937;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .header-center {
