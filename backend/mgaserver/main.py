@@ -4,8 +4,11 @@ import pickle
 
 import pandas as pd
 import xarray as xr
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from .api_models import ConstraintRow, ConstraintsPayload, BreakpointResult, NavigateResponse, ConstraintChangeItem, DimensionRange, DimensionEntry, InitResponse, InitPlotResponse, PlotRequest, PlotResponse, LowerBoundRequest, LowerBoundResponse, LowerBoundPointResult
 from .schemes import Constraints, Alpha, Breakpoint
@@ -58,7 +61,11 @@ async def lifespan(app: FastAPI):
     yield
 
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,7 +84,8 @@ async def log_requests(request, call_next):
 
 
 @app.get("/init", response_model=InitResponse)
-def get_init() -> InitResponse:
+@limiter.limit("60/minute")
+def get_init(request: Request) -> InitResponse:
     optimal_point = points.loc[points[manifest.obj_label].idxmin()]
     return InitResponse(
         obj_label=manifest.obj_label,
@@ -94,12 +102,14 @@ def get_init() -> InitResponse:
 
 
 @app.get("/init_plot", response_model=InitPlotResponse)
-def get_init_plot() -> InitPlotResponse:
+@limiter.limit("60/minute")
+def get_init_plot(request: Request) -> InitPlotResponse:
     return InitPlotResponse(datasets=list(manifest.plots.keys()), obj_label=manifest.obj_label)
 
 
 @app.post("/navigate", response_model=NavigateResponse)
-def run_navigation(payload: ConstraintsPayload) -> NavigateResponse:
+@limiter.limit("20/minute;60/5minutes")
+def run_navigation(request: Request, payload: ConstraintsPayload) -> NavigateResponse:
     logger.info("navigate: building constraints")
     input_constraints = Constraints(pd.DataFrame(
         {label: row.model_dump() for label, row in payload.constraints.items()}
@@ -134,7 +144,8 @@ def run_navigation(payload: ConstraintsPayload) -> NavigateResponse:
 
 
 @app.post("/plot_data", response_model=PlotResponse)
-def get_plot_endpoint(payload: PlotRequest) -> PlotResponse:
+@limiter.limit("30/minute")
+def get_plot_endpoint(request: Request, payload: PlotRequest) -> PlotResponse:
     if payload.name not in manifest.plots:
         raise HTTPException(status_code=404, detail=f"Plot '{payload.name}' not found")
 
@@ -146,7 +157,8 @@ def get_plot_endpoint(payload: PlotRequest) -> PlotResponse:
 
 
 @app.post("/lower_bound", response_model=LowerBoundResponse)
-def get_lower_bound(payload: LowerBoundRequest) -> LowerBoundResponse:
+@limiter.limit("60/minute")
+def get_lower_bound(request: Request, payload: LowerBoundRequest) -> LowerBoundResponse:
     breakpoint_objs = [
         Breakpoint(
             beta=item.beta,
