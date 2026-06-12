@@ -2,8 +2,8 @@ name: Docker Publish
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
 
 jobs:
   docker:
@@ -11,6 +11,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download data files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download data-v1 --repo ${{ github.repository }} --pattern data.zip --clobber
+          unzip -o data.zip -d backend/
+          rm data.zip
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
