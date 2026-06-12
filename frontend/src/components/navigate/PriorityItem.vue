@@ -414,6 +414,7 @@ onUnmounted(() => {
   border-radius: 4px;
   background: #ffffff;
   padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 
@@ -427,6 +428,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin-bottom: 12px;
 }
 
 .priority-title-wrap {
@@ -540,6 +542,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .direction-btn.is-active {

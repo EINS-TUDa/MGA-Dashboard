@@ -1,4 +1,6 @@
-# MGA Dashboard
+# MGA Compass
+
+![License](https://img.shields.io/github/license/EINS-TUDa/MGA-Compass)
 
 ## Installation
 

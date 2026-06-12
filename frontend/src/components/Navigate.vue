@@ -444,6 +444,7 @@ onMounted(() => {
   padding: 4px 10px;
   font-size: 0.875rem;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .action-btn.primary {
@@ -466,7 +467,7 @@ onMounted(() => {
   background-color: #f0f0f0;
   position: relative;
   cursor: pointer;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .normalize-track {

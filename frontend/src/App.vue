@@ -1,15 +1,20 @@
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch } from 'vue'
 import Navigate from './components/Navigate.vue'
 import Traverse from './components/Traverse.vue'
 import TutorialModal from './components/TutorialModal.vue'
 import logoTU from './assets/logo_tu_darmstadt.svg'
 import logoMGA from './assets/mga_logo.svg'
 
-const showTutorial = ref(true)
+const TUTORIAL_SEEN_KEY = 'mga-tutorial-seen'
+const showTutorial = ref(localStorage.getItem(TUTORIAL_SEEN_KEY) !== 'true')
+
+watch(showTutorial, (open) => {
+  if (!open) localStorage.setItem(TUTORIAL_SEEN_KEY, 'true')
+})
 
 const openGithub = () => {
-  window.open('https://github.com/EINS-TUDa/MGA-Dashboard', '_blank', 'noopener,noreferrer')
+  window.open('https://github.com/EINS-TUDa/MGA-Compass', '_blank', 'noopener,noreferrer')
 }
 const beta = ref(0)
 const splitPercent = ref(40)
@@ -70,7 +75,7 @@ const toggleMode = () => {
     <header class="main-header">
       <div class="brand-left">
         <img :src="logoMGA" alt="MGA Logo" class="logo-mga" />
-        <h1 class="dashboard-title">MGA Exploration Dashboard</h1>
+        <h1 class="dashboard-title">MGA Compass</h1>
       </div>
 
       <div class="header-center" :style="{ left: `calc(${splitPercent}vw - ${splitPercent * 0.2}px + 14px)` }">
@@ -122,7 +127,7 @@ const toggleMode = () => {
         </button>
         <a
           class="github-link"
-          href="https://github.com/EINS-TUDa/MGA-Dashboard"
+          href="https://github.com/EINS-TUDa/MGA-Compass"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="GitHub repository"
@@ -230,8 +235,9 @@ body {
 .dashboard-title {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: 600;
-  color: #000000;
+  font-weight: 800;
+  color: #1f2937;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .header-center {
@@ -252,7 +258,7 @@ body {
   position: relative;
   cursor: pointer;
   transition: background-color 0.3s;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .toggle-track {

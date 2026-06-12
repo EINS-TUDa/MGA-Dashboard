@@ -115,6 +115,7 @@ const formatMessage = (message, values, dim) => {
   margin: 0 0 8px;
   border-radius: 4px;
   border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .message-body {

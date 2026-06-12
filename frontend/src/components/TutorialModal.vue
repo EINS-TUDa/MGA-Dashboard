@@ -11,7 +11,7 @@ watch(isOpen, (open) => {
 
 const slides = [
   {
-    title: 'Welcome to the MGA Exploration Dashboard',
+    title: 'Welcome to MGA Compass',
     text: 'Near-optimal solutions cost a small percentage more than the optimum. While slightly expensive, they can be preferable for political feasibility, social acceptance, or environmental impact. This platform helps you explore them in real time.',
     icon: 'logo',
   },

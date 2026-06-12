@@ -36,6 +36,16 @@ const onInput = (event) => {
 
 <template>
   <section class="navigation-controls">
+    <div class="slider-header">
+      <span class="header-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <line x1="2" y1="4" x2="22" y2="8" stroke="currentColor" stroke-width="2" />
+          <path d="M12,6 L12,14" stroke="currentColor" stroke-width="2" fill="none" />
+          <path d="M9,14 L15,14 A1,1 0 0 1 16,15 L16,17 A2,2 0 0 1 14,19 L10,19 A2,2 0 0 1 8,17 L8,15 A1,1 0 0 1 9,14" stroke="currentColor" stroke-width="2" fill="none" />
+        </svg>
+      </span>
+      <h3 class="header-title">Traverse</h3>
+    </div>
     <div class="field">
       <div class="slider-wrapper">
         <div class="value-row">
@@ -68,6 +78,25 @@ const onInput = (event) => {
 </template>
 
 <style scoped>
+.slider-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.header-icon {
+  display: inline-flex;
+  color: #1f2937;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
 .slider-wrapper {
   position: relative;
   width: 100%;

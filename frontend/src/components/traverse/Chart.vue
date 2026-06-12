@@ -379,6 +379,7 @@ onUnmounted(() => {
   color: #1f2937;
   font-size: 0.9rem;
   padding: 0.35rem 0.6rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .plot-wrap {
